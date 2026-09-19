@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="B班四班二輪">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>B班四班二輪</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--text:#172033;--muted:#687386;--line:#e2e6ee;--work:#dbeafe;--rest:#f7f8fa;--holiday:#fee2e2;--accent:#2563eb;--accent2:#1d4ed8}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1020;--card:#151b2c;--text:#f4f7fb;--muted:#a9b3c5;--line:#2b3448;--work:#17345b;--rest:#171d2b;--holiday:#4a2026;--accent:#60a5fa;--accent2:#3b82f6}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif}
+header{position:sticky;top:0;z-index:5;background:#111827;color:#fff;padding:calc(13px + env(safe-area-inset-top)) 16px 13px}
+h1{font-size:20px;margin:0 0 5px}.sub{font-size:12px;color:#cbd5e1}
+main{max-width:760px;margin:auto;padding:12px 12px calc(36px + env(safe-area-inset-bottom))}
+.card,.toolbar{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:12px;margin-bottom:12px;box-shadow:0 2px 9px #0000000a}
+.toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between}.month{font-weight:800;font-size:17px}
+button,input,textarea{font:inherit}button{border:0;border-radius:11px;padding:10px 12px;background:#e5e7eb;color:#111827;font-weight:650}button.primary{background:var(--accent);color:#fff}
+button:active{transform:scale(.98)}.week,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.week div{text-align:center;color:var(--muted);font-size:12px;padding:4px}
+.day{min-height:78px;background:var(--rest);border:1px solid var(--line);border-radius:10px;padding:5px;overflow:hidden}.day.work{background:var(--work)}.day.holiday{box-shadow:inset 0 0 0 2px #ef4444}.day.selected{outline:3px solid #93c5fd}
+.num{font-weight:800;font-size:13px}.tag{font-size:10px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.holidayText{color:#dc2626}.memoDot{color:#7c3aed}
+.details h2{font-size:17px;margin:0 0 8px}.row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}.row:last-child{border-bottom:0}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px}input,textarea{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--card);color:var(--text)}textarea{min-height:100px;resize:vertical}
+.small{font-size:12px;color:var(--muted);line-height:1.55}.actions{display:flex;gap:8px;flex-wrap:wrap}.banner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:11px;margin-bottom:12px;color:#1e3a8a;font-size:13px}
+@media(prefers-color-scheme:dark){.banner{background:#10213b;border-color:#284b79;color:#dbeafe}}
+</style>
+</head>
+<body>
+<header><h1>B班｜四班二輪</h1><div class="sub">2026/1/2 起班・做二休二・兩個月換早夜班・排到 2040/12/31</div></header>
+<main>
+<div class="banner">📱 免費 iPhone 版：Safari 開啟後按「分享」→「加入主畫面」，之後可像 App 一樣使用。</div>
+<div class="toolbar"><button id="prev">‹</button><div class="month" id="monthTitle"></div><button id="next">›</button></div>
+<div class="card"><div class="week"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div><div class="grid" id="calendar"></div></div>
+<div class="card details" id="details"></div>
+<div class="card">
+<h2 style="font-size:17px;margin:0 0 8px">鬧鐘與記事</h2>
+<label>早班鬧鐘</label><input id="dayAlarm" type="time" value="05:50">
+<label>夜班鬧鐘</label><input id="nightAlarm" type="time" value="17:50">
+<div class="actions" style="margin-top:10px"><button class="primary" id="saveSettings">儲存設定</button><button id="today">回今天</button></div>
+<p class="small">PWA 可以記住鬧鐘設定與每日記事，但 iPhone 網頁 App 不能保證像「時鐘」App 一樣在背景自動準時響鈴。按「加入提醒」可把當日上班資訊分享給提醒事項等 App。</p>
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.7.7/lunar.js"></script>
+<script>
+const START='2026-01-02',END='2040-12-31';
+let schedule=[], byDate={}; let view=new Date(); let selected=START;
+let memos=JSON.parse(localStorage.getItem('b_memos')||'{}');
+let dayAlarm=localStorage.getItem('b_dayAlarm')||'05:50',nightAlarm=localStorage.getItem('b_nightAlarm')||'17:50';
+document.getElementById('dayAlarm').value=dayAlarm;document.getElementById('nightAlarm').value=nightAlarm;
+const iso=d=>d.toISOString().slice(0,10), d0=s=>new Date(s+'T00:00:00');
+function info(s){return byDate[s]||null}
+function lunarInfo(s){try{let [y,m,d]=s.split('-').map(Number),lun=Lunar.Solar.fromYmd(y,m,d).getLunar();return {text:lun.toString(),year:lun.getYearInGanZhi(),zodiac:lun.getYearShengXiao(),jieqi:lun.getJieQi()}}catch(e){return {text:'農曆資料需要網路載入',year:'',zodiac:'',jieqi:''}}}
+function holiday(s){let [y,m,d]=s.split('-').map(Number),n=null;if(m===1&&d===1)n='開國紀念日';if(m===2&&d===28)n='和平紀念日';if(m===4&&d===4)n='兒童節';if(m===5&&d===1)n='勞動節';if(m===9&&d===28)n='教師節';if(m===10&&d===10)n='國慶日';if(m===10&&d===25)n='臺灣光復暨古寧頭大捷紀念日';if(m===12&&d===25)n='行憲紀念日';try{let lun=Lunar.Solar.fromYmd(y,m,d).getLunar(),lm=lun.getMonth(),ld=lun.getDay();if(lm===1&&ld<=3)n='春節';if(lm===5&&ld===5)n='端午節';if(lm===8&&ld===15)n='中秋節';if(lun.getJieQi()==='清明')n='清明節'}catch(e){}return n}
+function shiftText(i){if(!i)return '不在排班範圍';if(!i.work)return '休班';return i.shift==='night'?'夜班 20:00 → 隔日 08:10':'早班 08:00 → 20:10'}
+function render(){let y=view.getFullYear(),m=view.getMonth();document.getElementById('monthTitle').textContent=`${y} 年 ${m+1} 月`;let cal=document.getElementById('calendar');cal.innerHTML='';let first=new Date(y,m,1),last=new Date(y,m+1,0);for(let i=0;i<first.getDay();i++)cal.appendChild(document.createElement('div'));for(let n=1;n<=last.getDate();n++){let s=iso(new Date(y,m,n)),el=document.createElement('div'),i=info(s),hol=holiday(s);el.className='day';if(i?.work)el.classList.add('work');if(hol)el.classList.add('holiday');if(s===selected)el.classList.add('selected');el.innerHTML=`<div class="num">${n}</div><div class="tag">${shiftText(i).split(' ')[0]}</div>${hol?`<div class="tag holidayText">${hol}</div>`:''}${memos[s]?'<div class="tag memoDot">● 有記事</div>':''}`;el.onclick=()=>{selected=s;render();showDetails()};cal.appendChild(el)}showDetails()}
+function showDetails(){let i=info(selected),li=lunarInfo(selected),hol=holiday(selected),alarm=i?.work?(i.shift==='night'?nightAlarm:dayAlarm):'—';document.getElementById('details').innerHTML=`<h2>${selected}</h2><div class="row"><span>班別</span><b>B班</b></div><div class="row"><span>今天上班</span><b>${shiftText(i)}</b></div><div class="row"><span>鬧鐘</span><b>${alarm}</b></div><div class="row"><span>農曆</span><b>${li.text}</b></div><div class="row"><span>干支／生肖</span><b>${li.year}／${li.zodiac}</b></div><div class="row"><span>節氣</span><b>${li.jieqi||'—'}</b></div><div class="row"><span>國定假日</span><b>${hol||'—'}</b></div><label>今日記事</label><textarea id="memo" placeholder="輸入這一天的記事…">${memos[selected]||''}</textarea><div class="actions"><button class="primary" id="saveMemo">儲存記事</button>${i?.work?'<button id="remind">加入提醒</button>':''}</div><p class="small">假日只作顏色與文字標示，不會改變四班二輪班表。</p>`;document.getElementById('saveMemo').onclick=()=>{memos[selected]=document.getElementById('memo').value;localStorage.setItem('b_memos',JSON.stringify(memos));render()};if(i?.work)document.getElementById('remind').onclick=()=>{let text=`B班${i.shift==='night'?'夜班':'早班'} ${selected} ${i.shift==='night'?'20:00上班':'08:00上班'}；鬧鐘 ${alarm}`;if(navigator.share)navigator.share({title:'B班上班提醒',text}).catch(()=>{});else{navigator.clipboard?.writeText(text);alert('提醒文字已複製')}}}
+document.getElementById('prev').onclick=()=>{view.setMonth(view.getMonth()-1);render()};document.getElementById('next').onclick=()=>{view.setMonth(view.getMonth()+1);render()};document.getElementById('today').onclick=()=>{view=new Date();selected=iso(new Date());render()};document.getElementById('saveSettings').onclick=()=>{dayAlarm=document.getElementById('dayAlarm').value;nightAlarm=document.getElementById('nightAlarm').value;localStorage.setItem('b_dayAlarm',dayAlarm);localStorage.setItem('b_nightAlarm',nightAlarm);render();alert('設定已儲存')};
+fetch('schedule_2026_2040.json').then(r=>r.json()).then(data=>{schedule=data;byDate=Object.fromEntries(data.map(x=>[x.date,x]));view=d0(START);render()}).catch(()=>{document.getElementById('details').innerHTML='<h2>班表載入失敗</h2><p class="small">請重新整理頁面。</p>'});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
